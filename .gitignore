@@ -40,15 +40,6 @@ yarn-error.*
 /ios
 /android
 
-# Images & media assets (add locally or host on cloud storage)
-*.jpg
-*.jpeg
-*.png
-*.gif
-*.webp
-*.mp4
-*.mp3
-*.svg
-*.ico
-assets/
+
+
 src/assets/
