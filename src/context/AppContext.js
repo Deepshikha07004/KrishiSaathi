@@ -13,6 +13,8 @@ export const AppProvider = ({ children }) => {
     const [chatType, setChatType] = useState('General');
     const [pinnedMessage, setPinnedMessage] = useState(null);
     const [isManualLocation, setIsManualLocation] = useState(false);
+    const [chatBackground, setChatBackground] = useState(null);
+    const [weatherData, setWeatherData] = useState(null); // Added for weather
 
     const digitsMap = {
         hi: ["०", "१", "२", "३", "४", "५", "६", "७", "८", "९"],
@@ -35,17 +37,22 @@ export const AppProvider = ({ children }) => {
         let watcher;
         const startTracking = async () => {
             try {
+                // Don't track if manual location is set or on web
                 if (isManualLocation || Platform.OS === 'web') {
-                    // Default location for web/manual to avoid common geocoding crashes
-                    if (!location && !isManualLocation) {
-                        updateAddress(22.5726, 88.3639);
-                    }
                     return;
                 }
 
                 let { status } = await Location.requestForegroundPermissionsAsync();
-                if (status !== 'granted') return;
+                if (status !== 'granted') {
+                    console.log("Location permission denied");
+                    return;
+                }
 
+                // Get initial location
+                const initialLocation = await Location.getCurrentPositionAsync({});
+                updateAddress(initialLocation.coords.latitude, initialLocation.coords.longitude);
+
+                // Watch for location changes
                 watcher = await Location.watchPositionAsync(
                     {
                         accuracy: Location.Accuracy.High,
@@ -58,55 +65,90 @@ export const AppProvider = ({ children }) => {
                 );
             } catch (err) {
                 console.log("Tracking error:", err);
+                // Don't set fallback data, just log the error
+                setLocation(null);
             }
         };
 
         const updateAddress = async (lat, lon) => {
-            let addressInfo = {
-                placeName: "Kisan Nagar Main",
-                fullAddress: "Street 42, Green Farm Zone",
-                district: "North 24 Parganas",
-                state: "West Bengal",
-                pinCode: "700123"
-            };
-
             try {
+                // Only attempt reverse geocoding on native platforms
                 if (Platform.OS !== 'web') {
-                    let geo = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lon });
+                    const geo = await Location.reverseGeocodeAsync({ 
+                        latitude: lat, 
+                        longitude: lon 
+                    });
+                    
                     if (geo && geo.length > 0) {
-                        addressInfo.placeName = geo[0].name || geo[0].city || geo[0].district || "My Village";
-                        addressInfo.fullAddress = `${geo[0].street ? geo[0].street + ', ' : ''}${geo[0].subregion || ''} ${geo[0].city || ''}`;
-                        addressInfo.district = geo[0].district || geo[0].city || "Bongaon";
-                        addressInfo.state = geo[0].region || "West Bengal";
-                        addressInfo.pinCode = geo[0].postalCode || "743235";
+                        const addressInfo = {
+                            placeName: geo[0].name || geo[0].city || geo[0].district || null,
+                            fullAddress: [
+                                geo[0].street,
+                                geo[0].subregion,
+                                geo[0].city
+                            ].filter(Boolean).join(', ') || null,
+                            district: geo[0].district || geo[0].city || null,
+                            state: geo[0].region || null,
+                            pinCode: geo[0].postalCode || null
+                        };
+
+                        setLocation({
+                            latitude: lat,
+                            longitude: lon,
+                            latitudeDelta: 0.01,
+                            longitudeDelta: 0.01,
+                            ...addressInfo
+                        });
                     }
+                } else {
+                    // On web, just set coordinates without address
+                    setLocation({
+                        latitude: lat,
+                        longitude: lon,
+                        latitudeDelta: 0.01,
+                        longitudeDelta: 0.01
+                    });
                 }
             } catch (e) {
-                console.log("Geocoding failed, using fallback");
+                console.log("Geocoding failed:", e);
+                // Still set coordinates even if geocoding fails
+                setLocation({
+                    latitude: lat,
+                    longitude: lon,
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01
+                });
             }
-
-            setLocation(prev => ({
-                ...(prev || {}),
-                latitude: lat,
-                longitude: lon,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-                ...addressInfo
-            }));
         };
 
         startTracking();
         return () => {
             if (watcher && watcher.remove) watcher.remove();
         };
-    }, [isManualLocation, lang]);
+    }, [isManualLocation]); // Removed lang dependency as it's not needed
 
     return (
         <AppContext.Provider value={{
-            lang, setLang, t, user, setUser, location, setLocation,
-            isChatVisible, setChatVisible, chatType, setChatType,
-            pinnedMessage, setPinnedMessage,
-            isManualLocation, setIsManualLocation, convertDigits
+            lang, 
+            setLang, 
+            t, 
+            user, 
+            setUser, 
+            location, 
+            setLocation,
+            isChatVisible, 
+            setChatVisible, 
+            chatType, 
+            setChatType,
+            pinnedMessage, 
+            setPinnedMessage,
+            isManualLocation, 
+            setIsManualLocation, 
+            convertDigits,
+            chatBackground, 
+            setChatBackground,
+            weatherData,
+            setWeatherData
         }}>
             {children}
         </AppContext.Provider>

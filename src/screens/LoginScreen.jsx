@@ -11,7 +11,7 @@ import {
   ImageBackground,
   Keyboard,
   TouchableWithoutFeedback,
-  ActivityIndicator
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -20,15 +20,17 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppContext } from "../context/AppContext";
 
 const LoginScreen = ({ navigation }) => {
-  const { setUser, t, convertDigits } = useContext(AppContext);
+  const { setUser, t, convertDigits, selectedLanguage } = useContext(AppContext);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const validatePhoneNumber = (number) => {
     const cleanedNumber = number.replace(/\D/g, "");
-    if (cleanedNumber.length !== 10) return t.invalidPhone || "Phone number must be 10 digits";
-    if (!["6", "7", "8", "9"].includes(cleanedNumber.charAt(0))) return t.invalidPhone || "Invalid phone number";
+    if (cleanedNumber.length !== 10)
+      return t.invalidPhone || "Phone number must be 10 digits";
+    if (!["6", "7", "8", "9"].includes(cleanedNumber.charAt(0)))
+      return t.invalidPhone || "Invalid phone number";
     return "";
   };
 
@@ -56,18 +58,51 @@ const LoginScreen = ({ navigation }) => {
 
     setIsLoading(true);
     try {
-      // Simulate login and store user data
-      const userData = { phone: phoneNumber, name: "Kisan Bhai" };
-      setUser(userData);
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
+      // API call to backend for login - Backend team handles database verification
+      const response = await fetch('YOUR_BACKEND_URL/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phone: phoneNumber,
+          language: selectedLanguage, // Send selected language for response localization
+        }),
+      });
 
-      navigation.replace("Location");
-    } catch (e) {
-      Alert.alert("Error", "Login failed. Please try again.");
+      const data = await response.json();
+
+      if (response.ok) {
+        // Store user data in context only - backend handles database
+        const userData = { 
+          phone: phoneNumber, 
+          name: data.name || "Kisan Bhai",
+          token: data.token, // Token from backend for authentication
+          userId: data.userId, // User ID from backend database
+          language: selectedLanguage,
+        };
+        
+        setUser(userData);
+        
+        // Store only authentication token in AsyncStorage - backend handles all user data
+        if (data.token) {
+          await AsyncStorage.setItem("userToken", data.token);
+        }
+        
+        navigation.replace("Location");
+      } else {
+        Alert.alert("Error", data.message || "Login failed. Please check your phone number.");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      Alert.alert("Error", "Network error. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Determine if current language is Bengali for font adjustments
+  const isBengali = selectedLanguage === 'bn';
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -83,89 +118,325 @@ const LoginScreen = ({ navigation }) => {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: "rgba(223, 239, 192, 0.6)",
+            backgroundColor: "rgba(223, 239, 192, 0.85)",
           }}
         />
 
         <SafeAreaView style={{ flex: 1 }}>
-          <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+          <StatusBar
+            barStyle="dark-content"
+            backgroundColor="transparent"
+            translucent
+          />
 
           <ScrollView
-            contentContainerStyle={{ paddingBottom: 30, flexGrow: 1 }}
+            contentContainerStyle={{ 
+              flexGrow: 1,
+              paddingBottom: 30 
+            }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={{ alignItems: "center", marginTop: 50 }}>
+            <View style={{ alignItems: "center", marginTop: 20 }}>
               <Image
                 source={require("../assets/main-icon.png")}
-                style={{ height: 190, width: 190, marginBottom: -25 }}
+                style={{ height: 250, width: 250, resizeMode: "contain", marginBottom: -80 }}
               />
             </View>
 
-            <Text style={{ fontSize: 30, color: "#1b5e20", textAlign: "center", fontWeight: "800", marginTop: 40, marginBottom: 8 }}>
-              {t.loginTitle}
-            </Text>
+            {/* MAIN GRADIENT CARD */}
+            <View
+              style={{
+                marginHorizontal: 20,
+                marginTop: 40,
+                borderRadius: 24,
+                overflow: "hidden",
+                elevation: 12,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.25,
+                shadowRadius: 10,
+                borderWidth: 2,
+                borderColor: "rgba(255,215,0,0.3)",
+              }}
+            >
+              <LinearGradient
+                colors={["rgba(255,255,255,0.98)", "rgba(226, 247, 183, 0.95)", "rgba(200, 230, 150, 0.98)"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  padding: 25,
+                }}
+              >
+                {/* Title */}
+                <Text
+                  style={{
+                    color: "#1b5e20",
+                    fontSize: isBengali ? 24 : 28,
+                    fontWeight: "900",
+                    textAlign: "center",
+                    marginBottom: 5,
+                  }}
+                >
+                  {t.loginTitle}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 25,
+                    color: "#19630f",
+                    textAlign: "center",
+                    marginTop: -30,
+                    marginBottom: 25,
+                    opacity: 0.8,
+                  }}
+                >
+                  {t.welcome}
+                </Text>
 
-            <Text style={{ fontSize: 15, color: "#19630f", textAlign: "center", fontWeight: "700", marginBottom: 40 }}>
-              {t.welcome}
-            </Text>
-
-            <View style={{ paddingHorizontal: 30 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: phoneError ? "#ff4444" : "#a5d6a7", borderRadius: 12, backgroundColor: "rgba(255, 255, 255, 0.95)", marginBottom: -5 }}>
-                <Ionicons name="call" size={22} color={phoneError ? "#ff4444" : "#156b18"} style={{ marginLeft: 15, marginRight: 12 }} />
-                <TextInput
-                  placeholder={t.phoneNumber}
-                  placeholderTextColor="#666"
-                  keyboardType="phone-pad"
-                  value={phoneNumber}
-                  onChangeText={handlePhoneChange}
-                  maxLength={10}
-                  style={{ flex: 1, paddingVertical: 16, fontSize: 16, color: phoneError ? "#ff4444" : "#000" }}
-                />
-                {phoneNumber.length > 0 && (
-                  <Text style={{ marginRight: 15, color: phoneError ? "#ff4444" : "#4caf50", fontWeight: "bold", fontSize: 14 }}>
-                    {convertDigits(phoneNumber.length)}/{convertDigits(10)}
-                  </Text>
-                )}
-              </View>
-
-              {phoneError ? (
-                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8, marginBottom: 25, marginLeft: 5 }}>
-                  <Ionicons name="alert-circle" size={16} color="#ff4444" />
-                  <Text style={{ color: "#ff4444", fontSize: 13, marginLeft: 6, flex: 1 }}>{phoneError}</Text>
+                {/* PHONE INPUT CARD */}
+                <View
+                  style={{
+                    borderWidth: 2,
+                    borderColor: phoneError ? "#ff4444" : "#FFD700",
+                    borderRadius: 20,
+                    marginBottom: phoneError ? 5 : 15,
+                    overflow: "hidden",
+                    backgroundColor: "#fff",
+                    elevation: 3,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 3,
+                  }}
+                >
+                  <LinearGradient
+                    colors={["rgba(255,255,255,0.9)", "rgba(240,255,240,0.9)"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      paddingHorizontal: 15,
+                    }}
+                  >
+                    <View style={{
+                      backgroundColor: "#4CAF20",
+                      borderRadius: 30,
+                      padding: 6,
+                      marginRight: 10,
+                    }}>
+                      <Ionicons
+                        name="call-outline"
+                        size={22}
+                        color="#fff"
+                      />
+                    </View>
+                    <View style={{ 
+                      flexDirection: "row", 
+                      alignItems: "center",
+                      flex: 1,
+                    }}>
+                      <Text
+                        style={{
+                          marginRight: 8,
+                          color: "#1b5e20",
+                          fontWeight: "700",
+                          fontSize: 16,
+                          backgroundColor: "#E8F5E9",
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          borderRadius: 8,
+                        }}
+                      >
+                        {convertDigits("+91")}
+                      </Text>
+                      <TextInput
+                        placeholder={t.phoneNumber}
+                        placeholderTextColor="#888"
+                        keyboardType="phone-pad"
+                        value={phoneNumber}
+                        onChangeText={handlePhoneChange}
+                        maxLength={10}
+                        style={{ flex: 1, paddingVertical: 16, fontSize: 16, color: phoneError ? "#ff4444" : "#333" }}
+                      />
+                    </View>
+                    {phoneNumber.length > 0 && (
+                      <Text
+                        style={{
+                          marginLeft: 5,
+                          color: phoneError ? "#ff4444" : "#4caf50",
+                          fontWeight: "bold",
+                          fontSize: 14,
+                        }}
+                      >
+                        {convertDigits(phoneNumber.length)}/{convertDigits(10)}
+                      </Text>
+                    )}
+                  </LinearGradient>
                 </View>
-              ) : phoneNumber.length === 10 ? (
-                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8, marginBottom: 30, marginLeft: 5 }}>
-                  <Ionicons name="checkmark-circle" size={16} color="#4caf50" />
-                  <Text style={{ color: "#4caf50", fontSize: 13, marginLeft: 6, flex: 1 }}>Valid phone number ✓</Text>
-                </View>
-              ) : (
-                <View style={{ marginBottom: 30, marginTop: 10 }} />
-              )}
+                
+                {phoneError ? (
+                  <View style={{
+                    borderWidth: 1,
+                    borderColor: "#ff4444",
+                    borderRadius: 12,
+                    padding: 8,
+                    marginBottom: 15,
+                    backgroundColor: "rgba(255,68,68,0.1)",
+                  }}>
+                    <Text style={{ color: "#ff4444", fontSize: 13, textAlign: "center" }}>
+                      <Ionicons name="alert-circle" size={16} /> {phoneError}
+                    </Text>
+                  </View>
+                ) : phoneNumber.length === 10 ? (
+                  <View style={{
+                    borderWidth: 1,
+                    borderColor: "#4caf50",
+                    borderRadius: 12,
+                    padding: 8,
+                    marginBottom: 15,
+                    backgroundColor: "rgba(76,175,80,0.1)",
+                  }}>
+                    <Text style={{ color: "#4caf50", fontSize: 13, textAlign: "center" }}>
+                      <Ionicons name="checkmark-circle" size={16} /> Valid phone number ✓
+                    </Text>
+                  </View>
+                ) : null}
 
-              <TouchableOpacity onPress={handleLogin} disabled={isLoading} style={{ borderRadius: 14, overflow: "hidden", elevation: 5, marginBottom: 20 }}>
-                <LinearGradient colors={["#ff9800", "#f57c00"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ paddingVertical: 18, flexDirection: "row", justifyContent: "center", alignItems: "center" }}>
-                  {isLoading ? <ActivityIndicator color="#fff" /> : (
-                    <>
-                      <Ionicons name="arrow-forward" size={24} color="#fff" style={{ marginRight: 10 }} />
-                      <Text style={{ color: "#fff", textAlign: "center", fontSize: 18, fontWeight: "bold" }}>{t.login}</Text>
-                    </>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-
-              <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: 25, marginBottom: 15 }}>
-                <Text style={{ fontSize: 16, color: "#1b5e20", fontWeight: "500" }}>{t.noAccount} </Text>
-                <TouchableOpacity onPress={() => navigation.navigate("Signup")} style={{ flexDirection: "row", alignItems: "center" }}>
-                  <Text style={{ color: "#d36b03", fontWeight: "bold", fontSize: 16, textDecorationLine: "underline" }}>{t.signup}</Text>
+                {/* LOGIN BUTTON */}
+                <TouchableOpacity
+                  onPress={handleLogin}
+                  disabled={isLoading}
+                  activeOpacity={0.8}
+                  style={{
+                    marginTop: 20,
+                    borderRadius: 50,
+                    overflow: "hidden",
+                    elevation: 8,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 5,
+                    borderWidth: 2,
+                    borderColor: "#FFD700",
+                  }}
+                >
+                  <LinearGradient
+                    colors={["#FF9800", "#F57C00", "#E65100"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{
+                      paddingVertical: 18,
+                      flexDirection: "row",
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <>
+                        <Text
+                          style={{
+                            color: "#fff",
+                            fontWeight: "bold",
+                            fontSize: 18,
+                            marginRight: 10,
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          {t.login}
+                        </Text>
+                        <View style={{
+                          backgroundColor: "rgba(255,255,255,0.2)",
+                          borderRadius: 20,
+                          padding: 4,
+                        }}>
+                          <Ionicons name="arrow-forward" size={22} color="#fff" />
+                        </View>
+                      </>
+                    )}
+                  </LinearGradient>
                 </TouchableOpacity>
-              </View>
+
+                {/* SIGNUP LINK - CORRECTED TEXT FORMATTING */}
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("Signup")}
+                  activeOpacity={0.8}
+                  style={{
+                    marginTop: 15,
+                    borderRadius: 50,
+                    overflow: "hidden",
+                    elevation: 4,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 3,
+                    borderWidth: 2,
+                    borderColor: "#FFD700",
+                  }}
+                >
+                  <LinearGradient
+                    colors={["#4CAF50", "#45a049", "#388E3C"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{
+                      paddingVertical: 14,
+                      flexDirection: "row",
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#fff",
+                        fontWeight: "bold",
+                        fontSize: 16,
+                        marginRight: 8,
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      {t.noAccount} {t.signup}
+                    </Text>
+                    <View style={{
+                      backgroundColor: "rgba(255,255,255,0.2)",
+                      borderRadius: 20,
+                      padding: 4,
+                    }}>
+                      <Ionicons name="person-add" size={20} color="#fff" />
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </LinearGradient>
             </View>
 
-            <View style={{ alignItems: "center", paddingHorizontal: 30, marginTop: "auto", marginBottom: 30 }}>
-              <TouchableOpacity onPress={() => navigation.navigate("Language")} style={{ backgroundColor: "rgba(255, 255, 255, 0.95)", paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20, borderWidth: 1, borderColor: "rgba(0, 150, 0, 0.3)", elevation: 3, flexDirection: "row", alignItems: "center" }}>
-                <Ionicons name="language" size={18} color="#1b5e20" style={{ marginRight: 8 }} />
-                <Text style={{ color: "#1b5e20", fontSize: 14, fontWeight: "600" }}>{t.changeLang}</Text>
+            {/* CHANGE LANGUAGE BUTTON */}
+            <View style={{ alignItems: "center", paddingHorizontal: 30, marginTop: 30, marginBottom: 20 }}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate("Language")}
+                style={{
+                  backgroundColor: "rgba(255, 255, 255, 0.95)",
+                  paddingHorizontal: 20,
+                  paddingVertical: 12,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: "rgba(0, 150, 0, 0.3)",
+                  elevation: 3,
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
+              >
+                <Ionicons
+                  name="language"
+                  size={18}
+                  color="#1b5e20"
+                  style={{ marginRight: 8 }}
+                />
+                <Text
+                  style={{ color: "#1b5e20", fontSize: 14, fontWeight: "600" }}
+                >
+                  {t.changeLang}
+                </Text>
               </TouchableOpacity>
             </View>
           </ScrollView>

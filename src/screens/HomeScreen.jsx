@@ -62,7 +62,10 @@ const HomeScreen = ({ navigation }) => {
         }}
       />
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 50 }}>
+      <ScrollView 
+        contentContainerStyle={{ padding: 20, paddingTop: 50, paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Top Profile Bar - Transparent Background */}
         <View
           style={{
@@ -290,7 +293,7 @@ const HomeScreen = ({ navigation }) => {
             borderRadius: 25,
             overflow: "hidden",
             elevation: 8,
-            marginBottom: 100,
+            marginBottom: 20,
           }}
         >
           <ImageBackground
@@ -474,11 +477,11 @@ const HomeScreen = ({ navigation }) => {
         </Pressable>
       </Modal>
 
-      {/* Floating Chatbot */}
+      {/* Floating Chatbot - MOVED SLIGHTLY DOWN */}
       <TouchableOpacity
         style={{
           position: "absolute",
-          bottom: 30,
+          bottom: 15,
           right: 30,
           backgroundColor: "#2E7D32",
           width: 65,

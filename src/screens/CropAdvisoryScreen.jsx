@@ -4,16 +4,22 @@ import {
     Text,
     TouchableOpacity,
     TextInput,
+    ImageBackground,
+    ActivityIndicator,
+    Dimensions
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import { AppContext } from '../context/AppContext';
-import styles from '../styles/globalStyles';
+
+const { width, height } = Dimensions.get('window');
 
 const CropAdvisoryScreen = () => {
-    const { t, lang, setChatType, setChatVisible, setPinnedMessage } = useContext(AppContext);
+    const { t, lang, setChatType, setChatVisible, setPinnedMessage, setChatBackground, isChatVisible } = useContext(AppContext);
     const [step, setStep] = useState(0);
     const [form, setForm] = useState({ name: '', date: '', fertilizer: '', pest: '', soil: '' });
+    const [chatOpened, setChatOpened] = useState(false);
+    const [showManualButton, setShowManualButton] = useState(false);
 
     const speak = (msg) => {
         Speech.stop();
@@ -27,108 +33,711 @@ const CropAdvisoryScreen = () => {
         else if (step === 3) speak(t.advQ3);
         else if (step === 4) speak(t.advQ4);
         else if (step === 5) speak(t.advQ5);
-        else if (step === 6) speak(t.advSummary);
+        else if (step === 6) {
+            speak(t.advSummary);
+            // Automatically open chatbot when reaching step 6
+            if (!chatOpened) {
+                setTimeout(() => {
+                    openChatbotWithDetails();
+                    setChatOpened(true);
+                }, 500);
+            }
+        }
     }, [step]);
 
-    const getAdvisory = () => {
-        const summary = `**Crop Details for Advice**\n\n- **Crop**: ${form.name}\n- **Sowing Date**: ${form.date}\n- **Fertilizer**: ${form.fertilizer}\n- **Issue**: ${form.pest}\n- **Soil**: ${form.soil}`;
+    // Monitor chat visibility to show/hide manual button
+    useEffect(() => {
+        if (step === 6) {
+            if (!isChatVisible && chatOpened) {
+                // User closed the chatbot, show manual button
+                setShowManualButton(true);
+            } else {
+                setShowManualButton(false);
+            }
+        }
+    }, [isChatVisible, step, chatOpened]);
+
+    const openChatbotWithDetails = () => {
+        const summary = `Crop Details for Advice :-\n\n` +
+            ` 🌾 Crop: ${form.name || 'Not specified'}\n` +
+            `📅 Sowing: ${form.date || 'Not specified'}\n` +
+            `🧪 Fertilizer: ${form.fertilizer || 'Not specified'}\n` +
+            `🐛 Issues: ${form.pest || 'Not specified'}\n` +
+            `🌱 Soil: ${form.soil || 'Not specified'}`;
+        
         setPinnedMessage(summary);
         setChatType('Advisory');
+        
+        // Set chatbot background
+        setChatBackground(require('../assets/truck.jpg'));
+        
+        // Open the chatbot
         setChatVisible(true);
+        setChatOpened(true);
+        setShowManualButton(false);
+    };
+
+    const handleContinue = (nextStep) => {
+        setStep(nextStep);
+    };
+
+    const handleBack = () => {
+        if (step > 0) {
+            setStep(prev => prev - 1);
+        }
     };
 
     const renderStep = () => {
         switch (step) {
             case 0:
                 return (
-                    <View style={styles.containerCenter}>
-                        <MaterialCommunityIcons name="chat-question" size={80} color="#2E7D32" />
-                        <Text style={styles.questionText}>{t.advIntro}</Text>
-                        <TouchableOpacity style={styles.primaryBtn} onPress={() => setStep(1)}>
-                            <Text style={styles.btnText}>{t.continue}</Text>
+                    <View style={{
+                        flex: 1,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        padding: 20,
+                    }}>
+                        <View style={{
+                            marginBottom: 20,
+                            backgroundColor: 'rgba(255, 255, 255, 0.4)',
+                            borderRadius: 50,
+                            padding: 10,
+                        }}>
+                            <MaterialCommunityIcons name="frequently-asked-questions" size={80} color="#2E7D32" />
+                        </View>
+                        <Text style={{
+                            fontSize: 20,
+                            fontWeight: '600',
+                            color: '#fff',
+                            textAlign: 'center',
+                            marginBottom: 20,
+                            textShadowColor: 'rgba(0, 0, 0, 0.3)',
+                            textShadowOffset: { width: 1, height: 1 },
+                            textShadowRadius: 3,
+                        }}>{t.advIntro}</Text>
+                        <TouchableOpacity 
+                            style={{
+                                backgroundColor: '#2E7D32',
+                                paddingVertical: 15,
+                                paddingHorizontal: 30,
+                                borderRadius: 30,
+                                flexDirection: 'row',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                elevation: 3,
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.25,
+                                shadowRadius: 3.84,
+                            }} 
+                            onPress={() => handleContinue(1)}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={{
+                                color: '#fff',
+                                fontSize: 18,
+                                fontWeight: '600',
+                                textAlign: 'center',
+                            }}>{t.continue}</Text>
                         </TouchableOpacity>
                     </View>
                 );
             case 1:
                 return (
-                    <View style={styles.p10}>
-                        <Text style={styles.questionText}>{t.advQ1}</Text>
-                        <TextInput style={styles.input} placeholder="e.g. Rice" value={form.name} onChangeText={v => setForm({ ...form, name: v })} />
-                        <TouchableOpacity style={styles.primaryBtn} onPress={() => setStep(2)}>
-                            <Text style={styles.btnText}>{t.continue}</Text>
-                        </TouchableOpacity>
+                    <View style={{
+                        flex: 1,
+                        justifyContent: 'center',
+                        padding: 20,
+                    }}>
+                        <View style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            borderRadius: 15,
+                            padding: 20,
+                            elevation: 5,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.25,
+                            shadowRadius: 3.84,
+                        }}>
+                            <Text style={{
+                                fontSize: 20,
+                                fontWeight: '600',
+                                color: '#333',
+                                textAlign: 'center',
+                                marginBottom: 20,
+                            }}>{t.advQ1}</Text>
+                            <TextInput 
+                                style={{
+                                    backgroundColor: '#fff',
+                                    borderWidth: 1,
+                                    borderColor: '#ddd',
+                                    borderRadius: 10,
+                                    padding: 15,
+                                    fontSize: 16,
+                                    marginBottom: 20,
+                                    elevation: 2,
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 1 },
+                                    shadowOpacity: 0.1,
+                                    shadowRadius: 2,
+                                }} 
+                                placeholder="e.g. Rice" 
+                                placeholderTextColor="#999"
+                                value={form.name} 
+                                onChangeText={v => setForm({ ...form, name: v })} 
+                                autoFocus={true}
+                            />
+                            <TouchableOpacity 
+                                style={{
+                                    backgroundColor: '#2E7D32',
+                                    paddingVertical: 15,
+                                    paddingHorizontal: 30,
+                                    borderRadius: 30,
+                                    flexDirection: 'row',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    elevation: 3,
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowOpacity: 0.25,
+                                    shadowRadius: 3.84,
+                                }} 
+                                onPress={() => handleContinue(2)}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={{
+                                    color: '#fff',
+                                    fontSize: 18,
+                                    fontWeight: '600',
+                                    textAlign: 'center',
+                                }}>{t.continue}</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 );
             case 2:
                 return (
-                    <View style={styles.p10}>
-                        <Text style={styles.questionText}>{t.advQ2}</Text>
-                        <TextInput style={styles.input} placeholder="e.g. 1st Aug" value={form.date} onChangeText={v => setForm({ ...form, date: v })} />
-                        <TouchableOpacity style={styles.primaryBtn} onPress={() => setStep(3)}>
-                            <Text style={styles.btnText}>{t.continue}</Text>
-                        </TouchableOpacity>
+                    <View style={{
+                        flex: 1,
+                        justifyContent: 'center',
+                        padding: 20,
+                    }}>
+                        <View style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            borderRadius: 15,
+                            padding: 20,
+                            elevation: 5,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.25,
+                            shadowRadius: 3.84,
+                        }}>
+                            <Text style={{
+                                fontSize: 20,
+                                fontWeight: '600',
+                                color: '#333',
+                                textAlign: 'center',
+                                marginBottom: 20,
+                            }}>{t.advQ2}</Text>
+                            <TextInput 
+                                style={{
+                                    backgroundColor: '#fff',
+                                    borderWidth: 1,
+                                    borderColor: '#ddd',
+                                    borderRadius: 10,
+                                    padding: 15,
+                                    fontSize: 16,
+                                    marginBottom: 20,
+                                    elevation: 2,
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 1 },
+                                    shadowOpacity: 0.1,
+                                    shadowRadius: 2,
+                                }} 
+                                placeholder="e.g. 1st Aug" 
+                                placeholderTextColor="#999"
+                                value={form.date} 
+                                onChangeText={v => setForm({ ...form, date: v })} 
+                                autoFocus={true}
+                            />
+                            <TouchableOpacity 
+                                style={{
+                                    backgroundColor: '#2E7D32',
+                                    paddingVertical: 15,
+                                    paddingHorizontal: 30,
+                                    borderRadius: 30,
+                                    flexDirection: 'row',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    elevation: 3,
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowOpacity: 0.25,
+                                    shadowRadius: 3.84,
+                                }} 
+                                onPress={() => handleContinue(3)}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={{
+                                    color: '#fff',
+                                    fontSize: 18,
+                                    fontWeight: '600',
+                                    textAlign: 'center',
+                                }}>{t.continue}</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 );
             case 3:
                 return (
-                    <View style={styles.p10}>
-                        <Text style={styles.questionText}>{t.advQ3}</Text>
-                        <TextInput style={styles.input} placeholder="e.g. Urea" value={form.fertilizer} onChangeText={v => setForm({ ...form, fertilizer: v })} />
-                        <TouchableOpacity style={styles.primaryBtn} onPress={() => setStep(4)}>
-                            <Text style={styles.btnText}>{t.continue}</Text>
-                        </TouchableOpacity>
+                    <View style={{
+                        flex: 1,
+                        justifyContent: 'center',
+                        padding: 20,
+                    }}>
+                        <View style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            borderRadius: 15,
+                            padding: 20,
+                            elevation: 5,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.25,
+                            shadowRadius: 3.84,
+                        }}>
+                            <Text style={{
+                                fontSize: 20,
+                                fontWeight: '600',
+                                color: '#333',
+                                textAlign: 'center',
+                                marginBottom: 20,
+                            }}>{t.advQ3}</Text>
+                            <TextInput 
+                                style={{
+                                    backgroundColor: '#fff',
+                                    borderWidth: 1,
+                                    borderColor: '#ddd',
+                                    borderRadius: 10,
+                                    padding: 15,
+                                    fontSize: 16,
+                                    marginBottom: 20,
+                                    elevation: 2,
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 1 },
+                                    shadowOpacity: 0.1,
+                                    shadowRadius: 2,
+                                }} 
+                                placeholder="e.g. Urea" 
+                                placeholderTextColor="#999"
+                                value={form.fertilizer} 
+                                onChangeText={v => setForm({ ...form, fertilizer: v })} 
+                                autoFocus={true}
+                            />
+                            <TouchableOpacity 
+                                style={{
+                                    backgroundColor: '#2E7D32',
+                                    paddingVertical: 15,
+                                    paddingHorizontal: 30,
+                                    borderRadius: 30,
+                                    flexDirection: 'row',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    elevation: 3,
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowOpacity: 0.25,
+                                    shadowRadius: 3.84,
+                                }} 
+                                onPress={() => handleContinue(4)}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={{
+                                    color: '#fff',
+                                    fontSize: 18,
+                                    fontWeight: '600',
+                                    textAlign: 'center',
+                                }}>{t.continue}</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 );
             case 4:
                 return (
-                    <View style={styles.p10}>
-                        <Text style={styles.questionText}>{t.advQ4}</Text>
-                        <TextInput style={[styles.input, { height: 100 }]} multiline placeholder="Describe issues..." value={form.pest} onChangeText={v => setForm({ ...form, pest: v })} />
-                        <TouchableOpacity style={styles.primaryBtn} onPress={() => setStep(5)}>
-                            <Text style={styles.btnText}>{t.continue}</Text>
-                        </TouchableOpacity>
+                    <View style={{
+                        flex: 1,
+                        justifyContent: 'center',
+                        padding: 20,
+                    }}>
+                        <View style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            borderRadius: 15,
+                            padding: 20,
+                            elevation: 5,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.25,
+                            shadowRadius: 3.84,
+                        }}>
+                            <Text style={{
+                                fontSize: 20,
+                                fontWeight: '600',
+                                color: '#333',
+                                textAlign: 'center',
+                                marginBottom: 20,
+                            }}>{t.advQ4}</Text>
+                            <TextInput 
+                                style={{
+                                    backgroundColor: '#fff',
+                                    borderWidth: 1,
+                                    borderColor: '#ddd',
+                                    borderRadius: 10,
+                                    padding: 15,
+                                    fontSize: 16,
+                                    marginBottom: 20,
+                                    elevation: 2,
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 1 },
+                                    shadowOpacity: 0.1,
+                                    shadowRadius: 2,
+                                    height: 100,
+                                    textAlignVertical: 'top',
+                                }} 
+                                multiline 
+                                placeholder="Describe issues..." 
+                                placeholderTextColor="#999"
+                                value={form.pest} 
+                                onChangeText={v => setForm({ ...form, pest: v })} 
+                                autoFocus={true}
+                            />
+                            <TouchableOpacity 
+                                style={{
+                                    backgroundColor: '#2E7D32',
+                                    paddingVertical: 15,
+                                    paddingHorizontal: 30,
+                                    borderRadius: 30,
+                                    flexDirection: 'row',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    elevation: 3,
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowOpacity: 0.25,
+                                    shadowRadius: 3.84,
+                                }} 
+                                onPress={() => handleContinue(5)}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={{
+                                    color: '#fff',
+                                    fontSize: 18,
+                                    fontWeight: '600',
+                                    textAlign: 'center',
+                                }}>{t.continue}</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 );
             case 5:
                 return (
-                    <View style={styles.p10}>
-                        <Text style={styles.questionText}>{t.advQ5}</Text>
-                        <TextInput style={styles.input} placeholder="e.g. Clay" value={form.soil} onChangeText={v => setForm({ ...form, soil: v })} />
-                        <TouchableOpacity style={styles.primaryBtn} onPress={() => setStep(6)}>
-                            <Text style={styles.btnText}>{t.continue}</Text>
-                        </TouchableOpacity>
+                    <View style={{
+                        flex: 1,
+                        justifyContent: 'center',
+                        padding: 20,
+                    }}>
+                        <View style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            borderRadius: 15,
+                            padding: 20,
+                            elevation: 5,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.25,
+                            shadowRadius: 3.84,
+                        }}>
+                            <Text style={{
+                                fontSize: 20,
+                                fontWeight: '600',
+                                color: '#333',
+                                textAlign: 'center',
+                                marginBottom: 20,
+                            }}>{t.advQ5}</Text>
+                            <TextInput 
+                                style={{
+                                    backgroundColor: '#fff',
+                                    borderWidth: 1,
+                                    borderColor: '#ddd',
+                                    borderRadius: 10,
+                                    padding: 15,
+                                    fontSize: 16,
+                                    marginBottom: 20,
+                                    elevation: 2,
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 1 },
+                                    shadowOpacity: 0.1,
+                                    shadowRadius: 2,
+                                }} 
+                                placeholder="e.g. Clay" 
+                                placeholderTextColor="#999"
+                                value={form.soil} 
+                                onChangeText={v => setForm({ ...form, soil: v })} 
+                                autoFocus={true}
+                            />
+                            <TouchableOpacity 
+                                style={{
+                                    backgroundColor: '#2E7D32',
+                                    paddingVertical: 15,
+                                    paddingHorizontal: 30,
+                                    borderRadius: 30,
+                                    flexDirection: 'row',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    elevation: 3,
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowOpacity: 0.25,
+                                    shadowRadius: 3.84,
+                                }} 
+                                onPress={() => handleContinue(6)}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={{
+                                    color: '#fff',
+                                    fontSize: 18,
+                                    fontWeight: '600',
+                                    textAlign: 'center',
+                                }}>{t.continue}</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 );
             case 6:
                 return (
-                    <View style={styles.p10}>
-                        <View style={styles.pinnedBox}>
-                            <Text style={styles.pinnedTitle}>Crop Details</Text>
-                            <Text>Crop: {form.name}</Text>
-                            <Text>Sowing: {form.date}</Text>
-                            <Text>Fertilizer: {form.fertilizer}</Text>
-                            <Text>Issues: {form.pest}</Text>
-                            <Text>Soil: {form.soil}</Text>
+                    <View style={{
+                        flex: 1,
+                        justifyContent: 'center',
+                        padding: 20,
+                    }}>
+                        <View style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            borderRadius: 15,
+                            padding: 20,
+                            elevation: 5,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.25,
+                            shadowRadius: 3.84,
+                        }}>
+                            <View style={{
+                                backgroundColor: '#f0f8f0',
+                                borderRadius: 10,
+                                padding: 15,
+                                marginBottom: 20,
+                                borderWidth: 1,
+                                borderColor: '#2E7D32',
+                            }}>
+                                <Text style={{
+                                    fontSize: 18,
+                                    fontWeight: 'bold',
+                                    color: '#2E7D32',
+                                    marginBottom: 15,
+                                    textAlign: 'center',
+                                }}>✅ Crop Details</Text>
+                                
+                                <View style={{
+                                    flexDirection: 'row',
+                                    marginBottom: 8,
+                                    paddingVertical: 5,
+                                    borderBottomWidth: 1,
+                                    borderBottomColor: '#e0e0e0',
+                                }}>
+                                    <Text style={{
+                                        fontSize: 14,
+                                        fontWeight: '600',
+                                        color: '#555',
+                                        width: 80,
+                                    }}>🌾 Crop:</Text>
+                                    <Text style={{
+                                        fontSize: 14,
+                                        color: '#333',
+                                        flex: 1,
+                                    }}>{form.name || 'Not specified'}</Text>
+                                </View>
+                                
+                                <View style={{
+                                    flexDirection: 'row',
+                                    marginBottom: 8,
+                                    paddingVertical: 5,
+                                    borderBottomWidth: 1,
+                                    borderBottomColor: '#e0e0e0',
+                                }}>
+                                    <Text style={{
+                                        fontSize: 14,
+                                        fontWeight: '600',
+                                        color: '#555',
+                                        width: 80,
+                                    }}>📅 Sowing:</Text>
+                                    <Text style={{
+                                        fontSize: 14,
+                                        color: '#333',
+                                        flex: 1,
+                                    }}>{form.date || 'Not specified'}</Text>
+                                </View>
+                                
+                                <View style={{
+                                    flexDirection: 'row',
+                                    marginBottom: 8,
+                                    paddingVertical: 5,
+                                    borderBottomWidth: 1,
+                                    borderBottomColor: '#e0e0e0',
+                                }}>
+                                    <Text style={{
+                                        fontSize: 14,
+                                        fontWeight: '600',
+                                        color: '#555',
+                                        width: 80,
+                                    }}>🧪 Fertilizer:</Text>
+                                    <Text style={{
+                                        fontSize: 14,
+                                        color: '#333',
+                                        flex: 1,
+                                    }}>{form.fertilizer || 'Not specified'}</Text>
+                                </View>
+                                
+                                <View style={{
+                                    flexDirection: 'row',
+                                    marginBottom: 8,
+                                    paddingVertical: 5,
+                                    borderBottomWidth: 1,
+                                    borderBottomColor: '#e0e0e0',
+                                }}>
+                                    <Text style={{
+                                        fontSize: 14,
+                                        fontWeight: '600',
+                                        color: '#555',
+                                        width: 80,
+                                    }}>🐛 Issues:</Text>
+                                    <Text style={{
+                                        fontSize: 14,
+                                        color: '#333',
+                                        flex: 1,
+                                    }}>{form.pest || 'Not specified'}</Text>
+                                </View>
+                                
+                                <View style={{
+                                    flexDirection: 'row',
+                                    marginBottom: 8,
+                                    paddingVertical: 5,
+                                    borderBottomWidth: 1,
+                                    borderBottomColor: '#e0e0e0',
+                                }}>
+                                    <Text style={{
+                                        fontSize: 14,
+                                        fontWeight: '600',
+                                        color: '#555',
+                                        width: 80,
+                                    }}>🌱 Soil:</Text>
+                                    <Text style={{
+                                        fontSize: 14,
+                                        color: '#333',
+                                        flex: 1,
+                                    }}>{form.soil || 'Not specified'}</Text>
+                                </View>
+                            </View>
+                            
+                            {!chatOpened ? (
+                                <>
+                                    <Text style={{
+                                        fontSize: 16,
+                                        color: '#666',
+                                        textAlign: 'center',
+                                        marginVertical: 15,
+                                    }}>
+                                        Opening chatbot with your crop details...
+                                    </Text>
+                                    <ActivityIndicator size="large" color="#2E7D32" style={{
+                                        marginVertical: 10,
+                                    }} />
+                                </>
+                            ) : showManualButton ? (
+                                <TouchableOpacity 
+                                    style={{
+                                        backgroundColor: '#FF8F00',
+                                        paddingVertical: 15,
+                                        paddingHorizontal: 30,
+                                        borderRadius: 30,
+                                        flexDirection: 'row',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        elevation: 3,
+                                        shadowColor: '#000',
+                                        shadowOffset: { width: 0, height: 2 },
+                                        shadowOpacity: 0.25,
+                                        shadowRadius: 3.84,
+                                        marginTop: 10,
+                                    }} 
+                                    onPress={openChatbotWithDetails}
+                                    activeOpacity={0.8}
+                                >
+                                    <Ionicons name="chatbubbles" size={24} color="#fff" />
+                                    <Text style={{
+                                        color: '#fff',
+                                        fontSize: 18,
+                                        fontWeight: '600',
+                                        textAlign: 'center',
+                                        marginLeft: 10,
+                                    }}>Open Chatbot</Text>
+                                </TouchableOpacity>
+                            ) : null}
                         </View>
-                        <Text style={styles.questionText}>{t.advSummary}</Text>
-                        <TouchableOpacity style={styles.primaryBtn} onPress={getAdvisory}>
-                            <Text style={styles.btnText}>{t.openChatbot}</Text>
-                            <Ionicons name="chatbubbles" size={20} color="#fff" style={{ marginLeft: 10 }} />
-                        </TouchableOpacity>
                     </View>
                 );
+            default:
+                return null;
         }
     };
 
     return (
-        <View style={styles.container}>
-            {renderStep()}
-            {step > 0 && (
-                <TouchableOpacity style={{ position: 'absolute', bottom: 20, left: 20 }} onPress={() => setStep(prev => prev - 1)}>
-                    <Ionicons name="arrow-back-circle" size={50} color="#666" />
-                </TouchableOpacity>
-            )}
-        </View>
+        <ImageBackground
+            source={require('../assets/truck.jpg')}
+            style={{
+                flex: 1,
+                width: '100%',
+                height: '100%',
+            }}
+            resizeMode="cover"
+        >
+            <View style={{
+                flex: 1,
+                backgroundColor: step > 0 ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.6)',
+            }}>
+                <View style={{
+                    flex: 1,
+                }}>
+                    {renderStep()}
+                    {step > 0 && step < 6 && (
+                        <TouchableOpacity 
+                            style={{
+                                position: 'absolute',
+                                bottom: 20,
+                                left: 20,
+                                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                borderRadius: 25,
+                                elevation: 5,
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.25,
+                                shadowRadius: 3.84,
+                                padding: 2,
+                            }} 
+                            onPress={handleBack}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="arrow-back-circle" size={50} color="#2E7D32" />
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
+        </ImageBackground>
     );
 };
 
